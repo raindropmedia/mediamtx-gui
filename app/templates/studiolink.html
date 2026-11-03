@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}StudioLink - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>StudioLink</h1>
+
+{% if not configured %}
+  <div class="card">
+    <p>Die StudioLink-Anbindung ist nicht konfiguriert. In der <span class="mono">.env</span> der GUI eintragen:</p>
+    <pre class="mono codebox">STUDIOLINK_API_URL=http://127.0.0.1:8787        # Backend aus Sicht der GUI
+STUDIOLINK_ADMIN_TOKEN=...                     # adminToken aus config.json des Backends
+MTX_AUTH_SECRET=...                            # openssl rand -hex 24</pre>
+    <p class="muted">Danach die GUI neu starten. Details: README, Abschnitt "StudioLink".</p>
+  </div>
+{% else %}
+
+{% if error %}
+  <div class="flash error">StudioLink-Backend: {{ error }}</div>
+{% endif %}
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+  <a class="btn" href="/studiolink/new">Neuen Reporter anlegen</a>
+  <a class="btn secondary" href="/studiolink/devices">Geraetetokens</a>
+</div>
+
+<h2>Reporter</h2>
+<table>
+  <tr><th>Reporter</th><th>Tally</th><th>Uplink</th><th>App</th><th>TSL</th><th></th></tr>
+  {% for r in reporters %}
+    <tr>
+      <td>
+        <strong>{{ r.name }}</strong><br>
+        <span class="mono muted">{{ r.id }}</span>
+        {% if r.hasPassphrase %}<span class="pill user" title="SRT-Verschluesselung aktiv">AES</span>{% endif %}
+      </td>
+      <td>
+        {% set t = (r.tally or {}).get("state", "unknown") %}
+        <span class="sl-dot sl-{{ t }}"></span>
+        {{ {"program": "Programm", "preview": "Preview", "off": "aus", "unknown": "unbekannt"}[t] }}
+        {% if r.tally and r.tally.text %}<div class="muted mono" style="font-size:12px;">{{ r.tally.text }}</div>{% endif %}
+      </td>
+      <td>
+        {% if r.uplinkReady is none %}<span class="sl-dot sl-unknown"></span> unbekannt
+        {% elif r.uplinkReady %}<span class="sl-dot sl-live"></span> <a href="/streams/{{ r.paths.uplink }}">sendet</a>
+        {% else %}<span class="sl-dot sl-off"></span> kein Bild{% endif %}
+      </td>
+      <td>
+        {% if r.connected %}<span class="sl-dot sl-live"></span> verbunden{% else %}<span class="sl-dot sl-off"></span> getrennt{% endif %}
+        {% if r.revokedBefore %}<div class="muted" style="font-size:12px;">widerrufen {{ r.revokedBefore|fromts }}</div>{% endif %}
+      </td>
+      <td class="mono" style="font-size:12px;">
+        {% if r.tsl and r.tsl.protocol == "tsl31" %}3.1 Adr. {{ r.tsl.address }}
+        {% elif r.tsl and r.tsl.protocol == "tsl50" %}5.0 S{{ r.tsl.screen }}/I{{ r.tsl.index }} {{ r.tsl.field }}
+        {% else %}-{% endif %}
+      </td>
+      <td style="white-space:nowrap;">
+        <a class="btn small" href="/studiolink/{{ r.id }}/qr">QR-Code</a>
+        <a class="btn small secondary" href="/studiolink/{{ r.id }}/edit">Bearbeiten</a>
+        <form class="inline" method="post" action="/studiolink/{{ r.id }}/revoke"
+              data-confirm="Alle bisher ausgegebenen QR-Codes, Links und Encoder-Zugaenge von '{{ r.id }}' ungueltig machen? Die App wird sofort getrennt.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn small secondary" type="submit">Widerrufen</button>
+        </form>
+        <form class="inline" method="post" action="/studiolink/{{ r.id }}/delete" data-confirm="Reporter '{{ r.id }}' wirklich loeschen?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn small danger" type="submit">Loeschen</button>
+        </form>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">Noch keine Reporter angelegt.</td></tr>
+  {% endfor %}
+</table>
+
+{% if calls %}
+<h2>"Regie rufen"</h2>
+<table>
+  <tr><th>Zeit</th><th>Reporter</th></tr>
+  {% for c in calls %}<tr><td>{{ (c.at / 1000)|fromts("%d.%m.%Y %H:%M:%S") }}</td><td class="mono">{{ c.reporterId }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+<h2>Integrationsstatus</h2>
+<div class="card">
+  <ul class="sl-checks">
+    {% for c in checks %}
+      <li class="{{ 'ok' if c.ok else 'bad' }}">
+        <span class="sl-check-icon">{{ "&#10003;"|safe if c.ok else "&#10007;"|safe }}</span>
+        <div><strong>{{ c.title }}</strong><div class="muted mono" style="font-size:12px;">{{ c.detail }}</div></div>
+      </li>
+    {% endfor %}
+  </ul>
+  {% if info %}
+  <p class="muted" style="font-size:13px;margin-bottom:0;">
+    Backend: <span class="mono">{{ info.publicBaseUrl }}</span> &middot;
+    Konfig-Schluessel <span class="mono">{{ info["keys"].configKid }}</span> &middot;
+    JWT-Schluessel <span class="mono">{{ info["keys"].jwtKid }}</span> &middot;
+    Standard-Gueltigkeit {{ (info.tokenTtlSeconds / 3600)|round(1) }} h
+  </p>
+  {% endif %}
+  <details style="margin-top:12px;">
+    <summary>Hinweise: MediaMTX auf diese GUI umstellen</summary>
+    <p>In <span class="mono">mediamtx.yml</span> (danach MediaMTX neu starten):</p>
+    <pre class="mono codebox">authMethod: http
+authHTTPAddress: {{ auth_url_example }}
+authHTTPExclude: []
+apiAddress: 127.0.0.1:9997      # bzw. nur im Docker-Netz erreichbar</pre>
+    <p class="muted">Bestehende Zugaenge (authInternalUsers, auch die unter "Zugangsdaten") gelten weiter - die GUI prueft
+      sie mit denselben Regeln wie MediaMTX. Zusaetzlich werden die Tokens der StudioLink-App und der Studiogeraete akzeptiert.
+      Laeuft die GUI nicht, lehnt MediaMTX alle Anmeldungen ab.</p>
+  </details>
+</div>
+
+{% if denied %}
+<h2>Zuletzt abgelehnte Anmeldungen</h2>
+<table>
+  <tr><th>Zeit</th><th>Aktion</th><th>Pfad</th><th>Protokoll</th><th>IP</th><th>Benutzer</th><th>Grund</th></tr>
+  {% for d in denied %}
+    <tr>
+      <td>{{ d.at|fromts("%H:%M:%S") }}</td><td>{{ d.action }}</td><td class="mono">{{ d.path }}</td>
+      <td>{{ d.protocol }}</td><td class="mono">{{ d.ip }}</td><td class="mono">{{ d.user }}</td><td>{{ d.reason }}</td>
+    </tr>
+  {% endfor %}
+</table>
+<p class="muted" style="font-size:12px;">Anfragen ganz ohne Zugangsdaten sind normal (MediaMTX fragt danach erst nach Benutzer/Passwort).</p>
+{% endif %}
+
+<h2>Geraetetoken fuer Studiogeraete</h2>
+<div class="card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+  <div style="flex:1;min-width:240px;">
+    <strong>{{ device_summary.total }}</strong> Geraetetoken
+    {% if device_summary.expiring %} &middot; <span style="color:var(--error);">{{ device_summary.expiring }} laeuft/laufen in 30 Tagen ab</span>{% endif %}
+    {% if device_summary.expired %} &middot; <span class="muted">{{ device_summary.expired }} abgelaufen</span>{% endif %}
+    <div class="muted" style="font-size:13px;">Langlebige Zugaenge fuer Magewell Ultra Stream, ZowieBox usw.</div>
+  </div>
+  <a class="btn secondary" href="/studiolink/devices">Geraetetokens verwalten</a>
+</div>
+{% endif %}
+{% endblock %}

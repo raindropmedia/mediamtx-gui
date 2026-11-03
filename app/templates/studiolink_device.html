@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ device.name }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<p style="margin-bottom:0;"><a href="/studiolink/devices">&larr; Geraetetokens</a></p>
+<h1>{{ device.name }}</h1>
+<p class="muted">
+  {{ "Senden auf" if device.action == "publish" else "Empfangen von" }} <span class="mono">{{ device.path }}</span>
+  &middot; angelegt {{ device.createdAt|fromts }}
+  &middot; gueltig bis <strong>{{ device.exp|fromts }}</strong>
+  {% if device.exp <= now %}<span class="pill user">abgelaufen</span>{% endif %}
+  &middot; ID <span class="mono">{{ device.id }}</span>
+</p>
+<div class="card">
+  {% for label, value in rows %}
+    <div class="link-row">
+      <div class="label">{{ label }}</div>
+      <div class="url mono" style="font-size:11.5px;">{{ value }}</div>
+      <button class="btn small secondary copy-btn" type="button" data-copy="{{ value }}">Kopieren</button>
+    </div>
+  {% endfor %}
+</div>
+<p class="hint muted">Die URLs enthalten das Token - wie ein Passwort behandeln. Ob das Geraet die Laenge der URL bzw. der
+  SRT-Stream-ID (max. 512 Zeichen) akzeptiert, bitte am Geraet pruefen.</p>
+<form class="inline" method="post" action="/studiolink/devices/{{ device.id }}/delete"
+      data-confirm="Geraetetoken '{{ device.name }}' loeschen? Das Geraet kann sich danach nicht mehr neu verbinden.">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button class="btn danger" type="submit">Token loeschen</button>
+</form>
+<a class="btn secondary" href="/studiolink/devices">Zurueck</a>
+{% endblock %}

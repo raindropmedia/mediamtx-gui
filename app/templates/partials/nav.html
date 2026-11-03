@@ -6,6 +6,7 @@
       {% if user.role == "admin" %}
         <a href="/streams/new">Neuer Stream</a>
         <a href="/credentials">Zugangsdaten</a>
+        {% if studiolink_enabled %}<a href="/studiolink">StudioLink</a>{% endif %}
         <a href="/users">Benutzer</a>
         <a href="/server">Server</a>
         <a href="/audit-log">Verlauf</a>

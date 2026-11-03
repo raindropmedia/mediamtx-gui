@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}QR-Code {{ rep.id }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>QR-Code fuer {{ rep.name }} <span class="mono muted" style="font-size:16px;">{{ rep.id }}</span></h1>
+
+{% if result %}
+  <div class="card sl-qr-card">
+    <img class="sl-qr" src="{{ result.qr_data_uri }}" alt="QR-Code mit der StudioLink-Konfiguration" data-qr-zoom>
+    <div class="sl-qr-meta">
+      <table>
+        <tr><th>Modus</th><td>{{ "Standalone (ohne Steuerkanal/Tally)" if not result.managed else "verwaltet (mit Steuerkanal und Tally)" }}</td></tr>
+        <tr><th>Gueltig bis</th><td><strong>{{ result.exp|fromts }}</strong></td></tr>
+        <tr><th>SRT-Server</th><td class="mono">{{ result.server.host }}:{{ result.server.srtPort }}</td></tr>
+        {% if result.controlWsUrl %}<tr><th>Steuerkanal</th><td class="mono">{{ result.controlWsUrl }}</td></tr>{% endif %}
+      </table>
+      <div class="link-row">
+        <div class="url mono" style="font-size:11px;max-height:5.5em;overflow:hidden;">{{ result.link }}</div>
+        <button class="btn small secondary copy-btn" type="button" data-copy="{{ result.link }}">Link kopieren</button>
+      </div>
+      <p class="hint muted">Mit der StudioLink-App oder der iPhone-Kamera scannen, oder den Link per AirDrop/Messenger schicken.
+        Der Code enthaelt die Zugangsdaten des Reporters bis zum Ablauf - nicht oeffentlich zeigen.
+        Bei Verlust: Reporter <em>widerrufen</em> und neuen Code erzeugen. Bild anklicken zum Vergroessern.</p>
+    </div>
+  </div>
+{% endif %}
+
+<form method="post" action="/studiolink/{{ rep.id }}/qr" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2 style="margin-top:0;">{{ "Neuen QR-Code erzeugen" if result else "QR-Code erzeugen" }}</h2>
+  <div class="grid sl-grid">
+    <div class="field">
+      <label for="mode">Modus</label>
+      <select id="mode" name="mode">
+        <option value="managed" {{ "selected" if not standalone }}>verwaltet (Tally, Regie rufen, Status)</option>
+        <option value="standalone" {{ "selected" if standalone }}>standalone (nur Uplink/Return)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="hours">Gueltigkeit (Stunden)</label>
+      <input type="number" id="hours" name="hours" min="0.25" max="720" step="0.25" value="{{ default_hours }}">
+      <div class="hint">Nach Ablauf muss ein neuer Code gescannt werden.</div>
+    </div>
+  </div>
+  <button class="btn" type="submit">QR-Code erzeugen</button>
+  <a class="btn secondary" href="/studiolink">Zurueck</a>
+</form>
+
+<form method="post" action="/studiolink/{{ rep.id }}/encoder" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2 style="margin-top:0;">Externer Encoder vor Ort</h2>
+  <p class="muted">Statt der App sendet ein Encoder (ZowieBox, Kamera mit SRT) den Uplink. Die App laeuft dann im Modus
+    "Externer Uplink" und zeigt nur Return und Tally.</p>
+  <div class="field" style="max-width:220px;">
+    <label for="enc-hours">Gueltigkeit (Stunden)</label>
+    <input type="number" id="enc-hours" name="hours" min="1" max="8760" value="12">
+  </div>
+  <button class="btn secondary" type="submit">Encoder-Zugang erzeugen</button>
+</form>
+{% endblock %}

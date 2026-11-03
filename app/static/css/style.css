@@ -218,3 +218,23 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 }
 .muted { color: var(--text-muted); }
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+
+/* --- StudioLink --- */
+.sl-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; background: var(--offline); }
+.sl-dot.sl-program { background: #d93025; }
+.sl-dot.sl-preview { background: #1e8e3e; }
+.sl-dot.sl-live { background: var(--online); }
+.sl-dot.sl-unknown { background: transparent; border: 2px solid var(--offline); width: 10px; height: 10px; }
+.sl-checks { list-style: none; margin: 0; padding: 0; }
+.sl-checks li { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.sl-checks li:last-child { border-bottom: none; }
+.sl-check-icon { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
+.sl-checks li.ok .sl-check-icon { background: var(--success); }
+.sl-checks li.bad .sl-check-icon { background: var(--error); }
+.sl-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.sl-qr-card { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.sl-qr { width: 300px; max-width: 100%; height: auto; background: #fff; padding: 8px; border-radius: 8px; cursor: zoom-in; }
+.sl-qr.zoomed { position: fixed; inset: 0; margin: auto; width: min(92vw, 92vh); z-index: 100; cursor: zoom-out; box-shadow: 0 0 0 100vmax rgba(0,0,0,.75); }
+.sl-qr-meta { flex: 1; min-width: 260px; }
+.sl-qr-meta th { text-align: left; padding-right: 12px; white-space: nowrap; }
+.codebox { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; overflow-x: auto; white-space: pre; }

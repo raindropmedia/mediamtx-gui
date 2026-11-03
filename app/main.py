@@ -12,7 +12,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .config import get_settings
 from .database import SessionLocal, init_db
-from .deps import get_mtx_client
+from .deps import get_mtx_client, get_studiolink_client
+from .mtx_auth import start_auth_task, stop_auth_task
 from .models import User
 from .security import generate_password, hash_password
 from .snapshots import start_background_task, stop_background_task
@@ -20,6 +21,17 @@ from .templating import render
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("mediamtx_gui")
+
+
+class _HideAuthEndpoint(logging.Filter):
+    """MediaMTX ruft /mtx/auth bei jeder Verbindung auf; die URL enthaelt das
+    Secret. Diese Zeilen nicht ins Zugriffsprotokoll schreiben."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "/mtx/auth" not in record.getMessage()
+
+
+logging.getLogger("uvicorn.access").addFilter(_HideAuthEndpoint())
 
 settings = get_settings()
 
@@ -92,13 +104,16 @@ async def on_startup() -> None:
     _seed_default_admin()
     client = get_mtx_client()
     start_background_task(client)
+    start_auth_task(client, get_studiolink_client())
 
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
     await stop_background_task()
+    await stop_auth_task()
     client = get_mtx_client()
     await client.aclose()
+    await get_studiolink_client().aclose()
     from .deps import get_playback_client
 
     await get_playback_client().aclose()
@@ -115,7 +130,7 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
     return await default_http_exception_handler(request, exc)
 
 
-from .routers import auth, credentials, dashboard, recordings, server, streams, users  # noqa: E402
+from .routers import auth, credentials, dashboard, mtx_auth, recordings, server, streams, studiolink, users  # noqa: E402
 
 # Route order matters: dashboard's "/streams/{name}/snapshot.jpg" and
 # recordings' "/streams/{name}/recordings" have a static suffix after the
@@ -128,3 +143,5 @@ app.include_router(streams.router)
 app.include_router(credentials.router)
 app.include_router(users.router)
 app.include_router(server.router)
+app.include_router(studiolink.router)
+app.include_router(mtx_auth.router)

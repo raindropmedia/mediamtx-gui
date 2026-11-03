@@ -96,8 +96,50 @@
     update();
   }
 
+  // Generisch: <select data-toggle-group="g"> blendet Elemente mit
+  // data-show-for="g:wert" ein, wenn wert ausgewaehlt ist.
+  function initToggleGroups() {
+    document.querySelectorAll("select[data-toggle-group]").forEach(function (select) {
+      var group = select.getAttribute("data-toggle-group");
+      var update = function () {
+        document.querySelectorAll("[data-show-for^='" + group + ":']").forEach(function (el) {
+          el.style.display = el.getAttribute("data-show-for") === group + ":" + select.value ? "" : "none";
+        });
+      };
+      select.addEventListener("change", update);
+      update();
+    });
+  }
+
+  function initQrZoom() {
+    document.querySelectorAll("[data-qr-zoom]").forEach(function (img) {
+      img.addEventListener("click", function () { img.classList.toggle("zoomed"); });
+    });
+    document.addEventListener("keydown", function (evt) {
+      if (evt.key === "Escape") {
+        document.querySelectorAll("[data-qr-zoom].zoomed").forEach(function (img) { img.classList.remove("zoomed"); });
+      }
+    });
+  }
+
+  // Geraetetoken-Vorlage: fuellt Pfad, Recht und Bezeichnung.
+  function initDevicePreset() {
+    var select = document.querySelector("[data-device-preset]");
+    if (!select) return;
+    select.addEventListener("change", function () {
+      var opt = select.options[select.selectedIndex];
+      if (!opt || !opt.value) return;
+      document.getElementById("dt-path").value = opt.value;
+      document.getElementById("dt-action").value = opt.getAttribute("data-action");
+      document.getElementById("dt-name").value = opt.getAttribute("data-name");
+    });
+  }
+
   initTheme();
   document.addEventListener("DOMContentLoaded", function () {
+    initToggleGroups();
+    initDevicePreset();
+    initQrZoom();
     initCopyButtons();
     initSnapshotRefresh();
     initConfirms();

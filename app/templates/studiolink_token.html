@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<p class="muted">{{ intro }}</p>
+<div class="card">
+  {% for label, value in rows %}
+    <div class="link-row">
+      <div class="label">{{ label }}</div>
+      <div class="url mono" style="font-size:11.5px;">{{ value }}</div>
+      <button class="btn small secondary copy-btn" type="button" data-copy="{{ value }}">Kopieren</button>
+    </div>
+  {% endfor %}
+  <p style="margin-bottom:0;">Gueltig bis <strong>{{ exp|fromts }}</strong>. Wird nur jetzt angezeigt.</p>
+</div>
+<a class="btn secondary" href="{{ back }}">Zurueck</a>
+{% endblock %}

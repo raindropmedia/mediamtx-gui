@@ -9,9 +9,11 @@ from .config import get_settings
 from .database import get_db
 from .models import User
 from .mtx_client import MediaMTXClient, PlaybackClient
+from .studiolink_client import StudioLinkClient
 
 _mtx_client: MediaMTXClient | None = None
 _playback_client: PlaybackClient | None = None
+_studiolink_client: StudioLinkClient | None = None
 
 
 def get_mtx_client() -> MediaMTXClient:
@@ -28,6 +30,14 @@ def get_playback_client() -> PlaybackClient:
         s = get_settings()
         _playback_client = PlaybackClient(s.mtx_playback_url)
     return _playback_client
+
+
+def get_studiolink_client() -> StudioLinkClient:
+    global _studiolink_client
+    if _studiolink_client is None:
+        s = get_settings()
+        _studiolink_client = StudioLinkClient(s.studiolink_api_url, s.studiolink_admin_token)
+    return _studiolink_client
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | None:

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Geraetetokens - MediaMTX GUI{% endblock %}
+{% block content %}
+<p style="margin-bottom:0;"><a href="/studiolink">&larr; StudioLink</a></p>
+<h1>Geraetetokens fuer Studiogeraete</h1>
+<p class="muted">Langlebige Zugaenge mit genau einer Berechtigung (Senden <em>oder</em> Empfangen auf einem Pfad), z. B. fuer den
+  Magewell Ultra Stream (Senden auf <span class="mono">studio/&lt;id&gt;/ret</span>) oder die ZowieBox (Empfangen von
+  <span class="mono">field/&lt;id&gt;/pgm</span>). Unabhaengig vom Widerruf eines Reporters. Loeschen sperrt das Token.</p>
+
+{% if error %}<div class="flash error">StudioLink-Backend: {{ error }}</div>{% endif %}
+
+<table>
+  <tr><th>Geraet</th><th>Recht</th><th>Pfad</th><th>Angelegt</th><th>Gueltig bis</th><th></th></tr>
+  {% for d in devices %}
+    {% set expired = d.exp <= now %}
+    {% set soon = not expired and d.exp < now + 30 * 86400 %}
+    <tr{% if expired %} class="muted"{% endif %}>
+      <td><strong>{{ d.name }}</strong><br><span class="mono muted" style="font-size:11px;">{{ d.id }}</span></td>
+      <td>{{ "Senden" if d.action == "publish" else "Empfangen" }}</td>
+      <td class="mono">{{ d.path }}</td>
+      <td>{{ d.createdAt|fromts("%d.%m.%Y") }}</td>
+      <td>
+        {% if expired %}<span class="pill user">abgelaufen</span> {{ d.exp|fromts("%d.%m.%Y") }}
+        {% elif soon %}<span style="color:var(--error);font-weight:600;">{{ d.exp|fromts("%d.%m.%Y") }}</span>
+        {% else %}{{ d.exp|fromts("%d.%m.%Y") }}{% endif %}
+      </td>
+      <td style="white-space:nowrap;">
+        <a class="btn small" href="/studiolink/devices/{{ d.id }}">Anzeigen</a>
+        <form class="inline" method="post" action="/studiolink/devices/{{ d.id }}/delete"
+              data-confirm="Geraetetoken '{{ d.name }}' loeschen? Das Geraet kann sich danach nicht mehr neu verbinden.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn small danger" type="submit">Loeschen</button>
+        </form>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">Noch keine Geraetetokens angelegt.</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Neues Geraetetoken</h2>
+<form method="post" action="/studiolink/devices/new" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if suggestions %}
+    <div class="field">
+      <label for="dt-preset">Vorlage (optional)</label>
+      <select id="dt-preset" data-device-preset>
+        <option value="">– frei eingeben –</option>
+        {% for path, action, label in suggestions %}
+          <option value="{{ path }}" data-action="{{ action }}" data-name="{{ label }}">{{ label }} ({{ path }})</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endif %}
+  <div class="grid sl-grid">
+    <div class="field">
+      <label for="dt-name">Bezeichnung</label>
+      <input type="text" id="dt-name" name="name" maxlength="80" placeholder="Ultra Stream Regie 1">
+    </div>
+    <div class="field">
+      <label for="dt-action">Recht</label>
+      <select id="dt-action" name="action">
+        <option value="publish">Senden (publish)</option>
+        <option value="read">Empfangen (read)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="dt-path">Pfad</label>
+      <input type="text" id="dt-path" name="path" required placeholder="studio/r1/ret">
+    </div>
+    <div class="field">
+      <label for="dt-days">Gueltigkeit (Tage)</label>
+      <input type="number" id="dt-days" name="days" min="1" max="3650" value="365">
+    </div>
+  </div>
+  <button class="btn" type="submit">Token anlegen</button>
+</form>
+{% endblock %}

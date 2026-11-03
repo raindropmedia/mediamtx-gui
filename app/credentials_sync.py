@@ -43,6 +43,11 @@ def _remember_managed_usernames(db: Session, usernames: list[str]) -> None:
 
 
 async def sync_credentials_to_mtx(client: MediaMTXClient, db: Session) -> None:
+    # Der Auth-Endpunkt liest die Zugaenge direkt aus der Datenbank - auch
+    # dann neu laden, wenn das Schreiben nach MediaMTX unten fehlschlaegt.
+    from .mtx_auth import request_refresh
+
+    request_refresh()
     all_creds = db.query(StreamCredential).all()
     _remember_managed_usernames(db, [c.username for c in all_creds])
     managed_universe = {r.username for r in db.query(ManagedCredentialUsername).all()}
@@ -64,6 +69,12 @@ async def sync_credentials_to_mtx(client: MediaMTXClient, db: Session) -> None:
         )
 
     await client.patch_global_config({"authInternalUsers": kept + generated})
+
+    # Bei authMethod: http wertet der GUI-Endpunkt /mtx/auth diese Liste aus -
+    # sofort neu laden, damit Aenderungen ohne Wartezeit gelten.
+    from .mtx_auth import request_refresh
+
+    request_refresh()
 
 
 def ensure_snapshot_credential(db: Session) -> tuple[StreamCredential, str | None]:

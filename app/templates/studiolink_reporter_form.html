@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ "Neuer Reporter" if is_new else "Reporter bearbeiten" }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>{{ "Neuer Reporter" if is_new else "Reporter bearbeiten: " + rep.id }}</h1>
+{% set tsl = (rep.tsl if rep and rep.tsl else {}) %}
+{% set prof = (rep.profile if rep and rep.profile else {}) %}
+
+<form method="post" action="{{ '/studiolink/new' if is_new else '/studiolink/' + rep.id + '/edit' }}" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  {% if is_new %}
+    <div class="field">
+      <label for="id">ID</label>
+      <input type="text" id="id" name="id" required pattern="[A-Za-z0-9_\-]{1,32}" maxlength="32" placeholder="r1">
+      <div class="hint">Kurz halten (Buchstaben, Ziffern, - und _). Bestimmt die Pfade
+        <span class="mono">field/&lt;id&gt;/pgm</span> (Uplink) und <span class="mono">studio/&lt;id&gt;/ret</span> (Return);
+        laesst sich spaeter nicht aendern.</div>
+    </div>
+  {% else %}
+    <p class="muted">Pfade: <span class="mono">{{ rep.paths.uplink }}</span> (Uplink), <span class="mono">{{ rep.paths["return"] }}</span> (Return)</p>
+  {% endif %}
+
+  <div class="field">
+    <label for="name">Anzeigename</label>
+    <input type="text" id="name" name="name" value="{{ rep.name if rep else '' }}" placeholder="Reporter 1">
+  </div>
+
+  <div class="field">
+    <label for="passphrase">SRT-Passphrase (Verschluesselung)</label>
+    <input type="text" id="passphrase" name="passphrase" autocomplete="off" minlength="10" maxlength="79"
+           placeholder="{{ 'gesetzt - leer lassen, um sie zu behalten' if rep and rep.hasPassphrase else 'leer = unverschluesselt' }}">
+    {% if rep and rep.hasPassphrase %}
+      <label class="checkbox-row"><input type="checkbox" name="passphrase_clear" value="1"> Passphrase entfernen</label>
+    {% endif %}
+    <div class="hint">10 bis 79 Zeichen. Muss in MediaMTX fuer die Pfade <span class="mono">field/…</span> und
+      <span class="mono">studio/…</span> gleich gesetzt sein (srtPublishPassphrase / srtReadPassphrase), sonst lieber leer lassen.</div>
+  </div>
+
+  <h2>Tally (TSL)</h2>
+  <div class="field">
+    <label for="tsl_protocol">Protokoll</label>
+    <select id="tsl_protocol" name="tsl_protocol" data-toggle-group="tsl">
+      <option value="" {{ "selected" if not tsl.protocol }}>kein Tally</option>
+      <option value="tsl31" {{ "selected" if tsl.protocol == "tsl31" }}>TSL 3.1</option>
+      <option value="tsl50" {{ "selected" if tsl.protocol == "tsl50" }}>TSL 5.0</option>
+    </select>
+  </div>
+  <div class="grid sl-grid" data-show-for="tsl:tsl31">
+    <div class="field"><label for="tsl31_address">Adresse (0-126)</label>
+      <input type="number" id="tsl31_address" name="tsl31_address" min="0" max="126" value="{{ tsl.address if tsl.protocol == 'tsl31' else '' }}"></div>
+    <div class="field"><label for="tsl31_program">Tally-Nr. Programm</label>
+      <input type="number" id="tsl31_program" name="tsl31_program" min="1" max="4" value="{{ tsl.programBit or 1 }}"></div>
+    <div class="field"><label for="tsl31_preview">Tally-Nr. Preview</label>
+      <input type="number" id="tsl31_preview" name="tsl31_preview" min="1" max="4" value="{{ tsl.previewBit or 2 }}"></div>
+  </div>
+  <div class="grid sl-grid" data-show-for="tsl:tsl50">
+    <div class="field"><label for="tsl50_screen">Screen</label>
+      <input type="number" id="tsl50_screen" name="tsl50_screen" min="0" max="65534" value="{{ tsl.screen or 0 }}"></div>
+    <div class="field"><label for="tsl50_index">Index</label>
+      <input type="number" id="tsl50_index" name="tsl50_index" min="0" max="65534" value="{{ tsl.index if tsl.protocol == 'tsl50' else '' }}"></div>
+    <div class="field"><label for="tsl50_field">Ausgewertetes Feld</label>
+      <select id="tsl50_field" name="tsl50_field">
+        {% for v, l in [("lh", "linkes Tally"), ("rh", "rechtes Tally"), ("txt", "Text-Tally")] %}
+          <option value="{{ v }}" {{ "selected" if (tsl.field or "lh") == v }}>{{ l }}</option>
+        {% endfor %}
+      </select></div>
+  </div>
+
+  <h2>Videoprofil</h2>
+  <p class="muted" style="margin-top:0;">Leer lassen = Standardwert des Backends (in Klammern).</p>
+  <div class="grid sl-grid">
+    {% for key, label in profile_fields %}
+      <div class="field">
+        <label for="profile_{{ key }}">{{ label }}</label>
+        <input type="number" id="profile_{{ key }}" name="profile_{{ key }}" value="{{ prof.get(key, '') }}"
+               placeholder="{{ defaults.get(key, '') }}">
+      </div>
+    {% endfor %}
+    <div class="field">
+      <label for="profile_codec">Codec</label>
+      <select id="profile_codec" name="profile_codec">
+        <option value="">Standard ({{ defaults.get("codec", "h264") }})</option>
+        <option value="h264" {{ "selected" if prof.get("codec") == "h264" }}>H.264</option>
+        <option value="hevc" {{ "selected" if prof.get("codec") == "hevc" }}>HEVC</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn" type="submit">{{ "Reporter anlegen" if is_new else "Speichern" }}</button>
+  <a class="btn secondary" href="/studiolink">Abbrechen</a>
+</form>
+{% endblock %}
