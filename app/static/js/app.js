@@ -135,8 +135,21 @@
     });
   }
 
+  // Aktuellen Menuepunkt hervorheben.
+  function initActiveNav() {
+    var path = window.location.pathname;
+    var best = null;
+    document.querySelectorAll(".topnav nav a").forEach(function (a) {
+      var href = a.getAttribute("href");
+      var match = href === "/" ? path === "/" : (path === href || path.indexOf(href + "/") === 0);
+      if (match && (!best || href.length > best.getAttribute("href").length)) best = a;
+    });
+    if (best) best.classList.add("active");
+  }
+
   initTheme();
   document.addEventListener("DOMContentLoaded", function () {
+    initActiveNav();
     initToggleGroups();
     initDevicePreset();
     initQrZoom();

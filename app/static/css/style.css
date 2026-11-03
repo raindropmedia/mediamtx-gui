@@ -238,3 +238,25 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .sl-qr-meta { flex: 1; min-width: 260px; }
 .sl-qr-meta th { text-align: left; padding-right: 12px; white-space: nowrap; }
 .codebox { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; overflow-x: auto; white-space: pre; }
+/* --- Navigation ---------------------------------------------------------
+   Breit: eine Zeile (Logo | Menue | Benutzer). Schmaler: Logo und Benutzer
+   oben, das Menue als eigene, einzeilige Leiste darunter (bei sehr wenig
+   Platz horizontal wischbar) - nie ein Umbruch mitten im Menue. */
+.topnav-inner { height: auto; min-height: 56px; flex-wrap: wrap; column-gap: 20px; row-gap: 0; }
+.topnav nav { flex: 0 1 auto; min-width: 0; flex-wrap: nowrap; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.topnav nav::-webkit-scrollbar { display: none; }
+.topnav nav a { white-space: nowrap; }
+.topnav .spacer { flex: 1 1 0; min-width: 0; }
+.topnav .user-chip { white-space: nowrap; }
+@media (max-width: 1240px) {
+  .topnav-inner { padding-top: 10px; }
+  .topnav nav {
+    order: 10;
+    flex: 1 0 100%;
+    margin: 6px -10px 0;
+    padding-bottom: 6px;
+  }
+}
+@media (max-width: 560px) {
+  .topnav .user-chip { display: none; }
+}
