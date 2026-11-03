@@ -20,6 +20,11 @@ services:
       - .env
     ports:
       - "8080:8080"
+    # Erlaubt dem Container, Dienste direkt auf dem Host zu erreichen
+    # (StudioLink-Backend, nativ installiertes MediaMTX):
+    #   STUDIOLINK_API_URL=http://host.docker.internal:8787
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - mediamtx-gui-data:/data
       # Der Docker-Socket (/var/run/docker.sock) wird bewusst NICHT

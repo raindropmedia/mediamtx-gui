@@ -32,6 +32,11 @@ die eigenen Daten (Benutzer, Metadaten, Zugangsdaten, Verlauf), ffmpeg fuer die 
   bestimmte Streams eingeschraenkt werden.
 - **Aufnahmen-Browser**: Liste der Aufnahmen je Stream über die MediaMTX-Playback-API, mit Download-Link.
 - **Verlauf/Audit-Log**: wer hat wann was geaendert.
+- **StudioLink** (optional): Reporter der Field-Reporter-App anlegen/bearbeiten/loeschen, QR-Codes und
+  Konfigurationslinks fuer die App erzeugen und anzeigen, Zugaenge widerrufen, Encoder- und Geraetetokens
+  ausgeben, Tally/Uplink/App-Verbindung je Reporter und ein Integrationsstatus.
+- **MediaMTX-Anmeldung ueber die GUI** (optional, `authMethod: http`): bisherige Zugangsdaten und
+  StudioLink-Tokens gleichzeitig.
 - **Hell/Dunkel-Design**, responsive.
 
 ## Voraussetzungen
@@ -167,10 +172,80 @@ Stream-Passwoerter, sowie Sicherheits-Header (CSP ohne `unsafe-inline` fuer Skri
 - Es gibt keine Zwei-Faktor-Authentifizierung. Bei besonders sensiblen Setups einen Reverse-Proxy mit
   zusaetzlicher Authentifizierung (z.B. per SSO/Basic-Auth-Vorschaltung) in Erwaegung ziehen.
 
+## StudioLink (Field-Reporter-App)
+
+Die GUI kann das [StudioLink](https://github.com/raindropmedia/Studio-link)-Backend verwalten. Die
+Schluessel und die Reporterliste bleiben im Backend; die GUI ruft nur dessen Admin-API auf.
+
+### 1. GUI mit dem Backend verbinden (`.env`)
+
+```
+STUDIOLINK_API_URL=http://host.docker.internal:8787   # Backend nativ auf dem Host
+STUDIOLINK_ADMIN_TOKEN=<adminToken aus config.json des Backends>
+MTX_AUTH_SECRET=<openssl rand -hex 24>
+```
+
+Laeuft das Backend auf dem Host und die GUI in Docker, muss das Backend auf einer fuer den Container
+erreichbaren Adresse lauschen (`"http": {"host": "0.0.0.0"}` bzw. die Docker-Bridge-IP) - Port 8787 dabei
+nicht in der Firewall nach aussen oeffnen. Danach erscheint der Menuepunkt **StudioLink**.
+
+### 2. MediaMTX auf die GUI als Anmeldestelle umstellen
+
+MediaMTX kennt nur *eine* Anmeldemethode. `internal` kennt keine Tokens, `jwt` keine Benutzer/Passwoerter.
+Damit beides gleichzeitig funktioniert, fragt MediaMTX bei jeder Verbindung die GUI:
+
+```yaml
+authMethod: http
+authHTTPAddress: http://127.0.0.1:8080/mtx/auth?secret=<MTX_AUTH_SECRET>
+authHTTPExclude: []
+```
+
+(`127.0.0.1:8080`, wenn MediaMTX nativ auf dem Host laeuft und die GUI ihren Port 8080 veroeffentlicht;
+im gemeinsamen Docker-Netz `http://mediamtx-gui:8080/...`.)
+
+Die GUI entscheidet dann so:
+
+- **authInternalUsers** aus der MediaMTX-Konfiguration werden mit denselben Regeln wie von MediaMTX
+  ausgewertet (Benutzer `any`, Passwort im Klartext oder `sha256:`, IP-Bereiche, Pfade inkl. `~Regex`).
+  Alle Zugaenge unter "Zugangsdaten" und von Hand gepflegte Eintraege gelten also unveraendert weiter.
+- **StudioLink-Tokens** (SRT-streamid `…:jwt:<token>`, RTSP/RTMP `?jwt=`, Bearer) werden mit dem
+  oeffentlichen Schluessel des Backends (JWKS) geprueft; widerrufene oder geloeschte Reporter werden
+  abgelehnt, Geraetetokens nicht.
+- **API-Zugriffe** der GUI selbst (`MTX_API_USER`/`MTX_API_PASS`) werden direkt erlaubt.
+
+Wichtig:
+
+- Laeuft die GUI nicht, lehnt MediaMTX **alle** Anmeldungen ab. Die GUI daher mit
+  `restart: unless-stopped` betreiben (Standard in `docker-compose.yml`).
+- Einen `authInternalUsers`-Eintrag `user: any` mit `publish` auf alle Pfade entfernen - sonst darf jeder
+  ohne Token senden.
+- Der Eintrag `user: any` mit `ips: [127.0.0.1, ::1]` und `action: api` muss bleiben, damit das Backend
+  den Uplink-Status abfragen kann.
+- `/mtx/auth` nicht ueber den oeffentlichen Reverse-Proxy freigeben (Beispiele in `reverse-proxy/`
+  sperren den Pfad). Zugriffe darauf erscheinen nicht im Zugriffsprotokoll, weil die URL das Secret
+  enthaelt.
+- Die zuletzt abgelehnten Anmeldungen (mit Grund) zeigt die Seite **StudioLink**.
+
+### 3. Bedienung
+
+**StudioLink → Neuen Reporter anlegen** (ID, Name, optional TSL-Tally, SRT-Passphrase, Videoprofil),
+danach **QR-Code** erzeugen (verwaltet oder standalone, Gueltigkeit in Stunden). Der QR-Code wird angezeigt
+(Klick vergroessert ihn), der Link laesst sich kopieren und z.B. per AirDrop oder Messenger verschicken.
+**Widerrufen** macht alle bisherigen Codes eines Reporters sofort ungueltig und trennt die App.
+**StudioLink → Geraetetokens**: langlebige Zugaenge fuer Studiogeraete (Ultra Stream, ZowieBox) anlegen
+(mit Vorlagen je Reporter), in einer Liste mit Ablaufdatum verwalten, die fertigen SRT/RTMP/RTSP-URLs
+jederzeit wieder anzeigen und Tokens loeschen. Ein geloeschtes Token wird bei der naechsten Anmeldung
+abgelehnt; eine bereits laufende Verbindung bleibt bis zum Neuaufbau bestehen.
+
+Der **Integrationsstatus** prueft Backend-Verbindung, SRT-Adresse fuer die App, Steuerkanal-URL,
+geladenen Schluessel, MediaMTX-Anmeldemethode, ob MediaMTX den Endpunkt tatsaechlich abfragt, und ob
+Pfade fuer `field/<id>/pgm` und `studio/<id>/ret` konfiguriert sind.
+
 ## Moegliche Erweiterungen (nicht enthalten)
 
 Bewusst nicht umgesetzt, um den Umfang uebersichtlich zu halten - bei Bedarf gerne nachruesten:
-Benachrichtigungen (E-Mail/Webhook) bei Stream-Ausfall, QR-Codes fuer mobile Player-Links,
+Benachrichtigungen (E-Mail/Webhook) bei Stream-Ausfall, QR-Codes fuer mobile Player-Links (fuer die
+StudioLink-App vorhanden),
 Massenaktionen (z.B. Aufnahme fuer alle Streams gleichzeitig umschalten), feingranulare UI fuer
 Raspberry-Pi-Kamera-Parameter (aktuell nur ueber das JSON-Feld erreichbar).
 
@@ -194,3 +269,12 @@ Sicherheitshinweise). MediaMTX direkt auf dem Server mit `docker restart mediamt
 Die Synchronisation laeuft automatisch bei jeder Aenderung ueber die GUI. Falls sie einmal fehlschlaegt
 (Fehlermeldung wird angezeigt), einfach auf der Zugangsdaten-Seite eine beliebige Kleinigkeit erneut
 speichern, um die Synchronisation zu wiederholen.
+
+**StudioLink: App bekommt keine Verbindung (Uplink/Return rot)**
+Seite **StudioLink** oeffnen: Der Integrationsstatus zeigt, was fehlt, und unten stehen die zuletzt
+abgelehnten Anmeldungen mit Grund. Haeufig: `server.host` im Backend ist `127.0.0.1`, MediaMTX steht noch
+auf `authMethod: internal`, UDP 8890 ist in der Firewall zu, oder der Return-Pfad `studio/<id>/ret` hat
+noch keinen Sender (dann ist Return-Rot normal).
+
+**StudioLink: "Admin-Token abgelehnt"**
+`STUDIOLINK_ADMIN_TOKEN` stimmt nicht mit `adminToken` bzw. `STUDIOLINK_ADMIN_TOKEN` des Backends ueberein.

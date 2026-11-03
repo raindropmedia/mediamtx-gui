@@ -6,6 +6,9 @@
 # Domain anpassen, danach: sudo systemctl reload caddy
 
 stream.example.com {
+	# MediaMTX-Auth-Endpunkt nicht oeffentlich anbieten (nur fuer MediaMTX).
+	respond /mtx/auth* 404
+
 	reverse_proxy mediamtx-gui:8080
 
 	# Optional, aber empfehlenswert: zusaetzliche Sicherheits-Header, die

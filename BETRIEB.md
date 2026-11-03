@@ -89,6 +89,20 @@ Nicht in `.env` konfigurierbar, aber gut zu wissen: das Datenverzeichnis liegt i
 `/data` (Umgebungsvariable `MEDIAMTX_GUI_DATA_DIR`, im mitgelieferten Dockerfile fest gesetzt) und wird
 per Docker-Volume (`mediamtx-gui-data`) persistiert.
 
+### StudioLink und MediaMTX-Anmeldung
+
+| Variable | Bedeutung |
+| --- | --- |
+| `STUDIOLINK_API_URL` | Admin-API des StudioLink-Backends aus Sicht der GUI, z.B. `http://host.docker.internal:8787`. Leer = StudioLink ausgeblendet. |
+| `STUDIOLINK_ADMIN_TOKEN` | `adminToken` des Backends. |
+| `STUDIOLINK_JWKS_URL` | optional, Standard `<STUDIOLINK_API_URL>/.well-known/jwks.json`. Der zuletzt geladene Schluessel wird in `/data/studiolink-jwks.json` zwischengespeichert. |
+| `MTX_AUTH_SECRET` | aktiviert `/mtx/auth` fuer `authMethod: http` in MediaMTX. |
+| `MTX_JWT_CLAIM_KEY` | Claim mit den Berechtigungen (Standard `mediamtx_permissions`). |
+| `MTX_AUTH_REFRESH_SECONDS` | wie oft Benutzerliste, Reporter und Schluessel neu geladen werden (Standard 15). |
+| `DISPLAY_TIMEZONE` | Zeitzone fuer angezeigte Zeitpunkte (Standard `Europe/Berlin`). |
+
+Siehe README, Abschnitt "StudioLink", fuer die Umstellung von MediaMTX auf `authMethod: http`.
+
 ## 4. Reverse-Proxy / TLS einrichten
 
 Die Anwendung selbst spricht nur unverschluesseltes HTTP auf Port 8080 - **TLS muss durch einen
