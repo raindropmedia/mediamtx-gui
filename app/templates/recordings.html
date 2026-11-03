@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Aufnahmen: {{ name }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>Aufnahmen: {{ name }}</h1>
+<p><a href="/streams/{{ name }}">&larr; Zurueck zum Stream</a></p>
+
+{% if not playback_enabled %}
+  <div class="empty-state">
+    <p>Die Playback-API ist nicht konfiguriert.</p>
+  </div>
+{% elif recordings %}
+  <table>
+    <tr><th>Beginn</th><th>Dauer</th><th></th></tr>
+    {% for r in recordings %}
+      <tr>
+        <td class="mono">{{ r.start }}</td>
+        <td class="mono">{{ r.duration }}</td>
+        <td>{% if r.download_url %}<a class="btn small secondary" href="{{ r.download_url }}" target="_blank">Herunterladen</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <div class="empty-state"><p>Keine Aufnahmen fuer diesen Stream gefunden.</p></div>
+{% endif %}
+{% endblock %}

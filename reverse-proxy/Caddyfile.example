@@ -1,0 +1,27 @@
+# Beispiel fuer Caddy (https://caddyserver.com) als TLS-Reverse-Proxy vor der
+# MediaMTX-GUI. Caddy holt/erneuert das Let's-Encrypt-Zertifikat automatisch,
+# sobald der Domainname von aussen erreichbar ist und Port 80+443 offen sind.
+#
+# Datei nach /etc/caddy/Caddyfile (oder als eigene Datei per "import") kopieren,
+# Domain anpassen, danach: sudo systemctl reload caddy
+
+stream.example.com {
+	reverse_proxy mediamtx-gui:8080
+
+	# Optional, aber empfehlenswert: zusaetzliche Sicherheits-Header, die
+	# ueber das hinausgehen, was die Anwendung selbst schon setzt.
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	}
+
+	encode gzip
+
+	log {
+		output file /var/log/caddy/mediamtx-gui-access.log
+	}
+}
+
+# Falls Caddy NICHT im selben Docker-Netzwerk wie die GUI laeuft, sondern
+# direkt auf dem Host: "reverse_proxy 127.0.0.1:8080" verwenden und in der
+# docker-compose.yml der GUI den Port "8080:8080" (nur auf 127.0.0.1 gebunden,
+# z.B. "127.0.0.1:8080:8080") veroeffentlichen statt ihn offen freizugeben.

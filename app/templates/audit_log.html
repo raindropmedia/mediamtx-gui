@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Verlauf - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>Aenderungsverlauf</h1>
+<p class="muted">Die letzten 200 Aktionen (Login, Stream- und Konfigurationsaenderungen, Benutzerverwaltung).</p>
+<table>
+  <tr><th>Zeitpunkt (UTC)</th><th>Benutzer</th><th>Aktion</th><th>Ziel</th><th>Details</th></tr>
+  {% for e in entries %}
+    <tr>
+      <td class="mono">{{ e.timestamp.strftime("%d.%m.%Y %H:%M:%S") }}</td>
+      <td>{{ e.username }}</td>
+      <td>{{ e.action }}</td>
+      <td class="mono">{{ e.target }}</td>
+      <td class="mono" style="max-width:320px;overflow-wrap:anywhere;">{{ e.details[:200] }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">Noch keine Eintraege.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

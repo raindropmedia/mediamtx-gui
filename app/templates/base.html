@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MediaMTX GUI{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="/static/js/theme-init.js"></script>
+</head>
+<body>
+{% if user %}
+  {% include "partials/nav.html" %}
+{% endif %}
+<div class="container">
+  {% include "partials/flash.html" %}
+  {% block content %}{% endblock %}
+</div>
+<script src="/static/js/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Erweiterte Konfiguration - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>Erweiterte Server-Konfiguration</h1>
+<div class="warning-box">
+  Hier wird die komplette globale MediaMTX-Konfiguration als JSON bearbeitet. Fehlerhafte Werte koennen den Server
+  oder den API-Zugriff der GUI selbst stoeren. Aendere insbesondere apiAddress/authInternalUsers mit Bedacht - ohne
+  einen gueltigen Zugang mit permission "api" verliert diese GUI den Zugriff auf MediaMTX.
+</div>
+<form method="post" action="/server/config" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="field">
+    <textarea name="conf_json" rows="28">{{ conf_pretty }}</textarea>
+  </div>
+  <button class="btn" type="submit">Speichern</button>
+  <a class="btn secondary" href="/server">Abbrechen</a>
+</form>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ "Neuer Benutzer" if is_new else "Benutzer bearbeiten" }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>{{ "Neuer Benutzer" if is_new else "Benutzer bearbeiten: " + target.username }}</h1>
+
+<form method="post" action="{{ '/users/new' if is_new else '/users/' + target.id|string + '/edit' }}" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  {% if is_new %}
+    <div class="field">
+      <label for="username">Benutzername</label>
+      <input type="text" id="username" name="username" required>
+    </div>
+    <div class="field">
+      <label for="password">Initiales Passwort (leer lassen fuer automatisch generiertes Passwort)</label>
+      <input type="text" id="password" name="password">
+    </div>
+  {% endif %}
+
+  <div class="field">
+    <label for="role">Rolle</label>
+    <select id="role" name="role">
+      <option value="user" {{ "selected" if (target and target.role == "user") or not target }}>Benutzer (nur Ansicht, ggf. eingeschraenkt)</option>
+      <option value="admin" {{ "selected" if target and target.role == "admin" }}>Administrator (voller Zugriff)</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="allowed_paths">Sichtbare Streams (kommagetrennt, leer = alle) - gilt nur fuer Rolle "Benutzer"</label>
+    <input type="text" id="allowed_paths" name="allowed_paths" value="{{ target.allowed_paths if target else '' }}" placeholder="kamera1, cams/eingang">
+  </div>
+
+  {% if not is_new %}
+    <div class="field">
+      <label class="checkbox-row"><input type="checkbox" name="active" {{ "checked" if target.active }}> Konto aktiv</label>
+    </div>
+    <div class="field">
+      <label class="checkbox-row"><input type="checkbox" name="reset_password"> Passwort zuruecksetzen (neues Passwort wird einmalig angezeigt)</label>
+    </div>
+  {% endif %}
+
+  <button class="btn" type="submit">{{ "Benutzer anlegen" if is_new else "Speichern" }}</button>
+  <a class="btn secondary" href="/users">Abbrechen</a>
+</form>
+{% endblock %}

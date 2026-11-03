@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Server - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>MediaMTX-Server</h1>
+
+<div class="stat-row">
+  <div class="stat-tile">
+    <div class="value">{{ "OK" if api_ok else "Fehler" }}</div>
+    <div class="label">Control-API erreichbar</div>
+  </div>
+  {% for label, value in stats.items() %}
+    <div class="stat-tile"><div class="value">{{ value if value is not none else "-" }}</div><div class="label">{{ label }}</div></div>
+  {% endfor %}
+</div>
+
+{% if not api_ok %}
+  <div class="warning-box">
+    Die MediaMTX Control-API ist nicht erreichbar. Pruefe MTX_API_URL/MTX_API_USER/MTX_API_PASS in der .env-Datei
+    und ob in mediamtx.yml ein authInternalUsers-Eintrag mit permission "api" fuer diesen Zugang existiert
+    (siehe README, Abschnitt "MediaMTX vorbereiten").
+  </div>
+{% endif %}
+
+<div class="card">
+  <h2 style="margin-top:0;">Protokolle</h2>
+  <table>
+    <tr><th>Protokoll</th><th>Status</th><th></th></tr>
+    {% for key, label in protocol_toggles %}
+      <tr>
+        <td>{{ label }}</td>
+        <td>{{ "Aktiv" if global_conf.get(key) else "Deaktiviert" }}</td>
+        <td>
+          <form class="inline" method="post" action="/server/protocols/{{ key }}/toggle">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn small secondary" type="submit" {{ "disabled" if not api_ok }}>
+              {{ "Deaktivieren" if global_conf.get(key) else "Aktivieren" }}
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  <p style="margin-top:14px;"><a href="/server/config">Erweiterte Konfiguration (vollstaendiges JSON bearbeiten) &rarr;</a></p>
+  <p class="hint muted">Aenderungen an der Konfiguration werden von MediaMTX sofort uebernommen (Hot-Reload) - ein Neustart des Containers ist dafuer nicht noetig.</p>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">MediaMTX-Container</h2>
+  {% if not docker_configured %}
+    <p class="muted">Die Docker-Container-Steuerung ist aus Sicherheitsgruenden gesperrt (kein Zugriff auf den Docker-Socket). MediaMTX bei Bedarf direkt auf dem Server neu starten, z.B. mit <code>docker restart mediamtx</code>.</p>
+  {% elif container and container.available %}
+    <table>
+      <tr><th>Name</th><td>{{ container.name }}</td></tr>
+      <tr><th>Status</th><td>{{ container.status }}</td></tr>
+      <tr><th>Image</th><td class="mono">{{ container.image }}</td></tr>
+      <tr><th>Gestartet</th><td>{{ container.started_at }}</td></tr>
+    </table>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <form method="post" action="/server/docker/start"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn secondary" type="submit">Starten</button></form>
+      <form method="post" action="/server/docker/stop" data-confirm="MediaMTX-Container wirklich stoppen? Alle aktiven Streams werden unterbrochen."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn secondary" type="submit">Stoppen</button></form>
+      <form method="post" action="/server/docker/restart" data-confirm="MediaMTX-Container wirklich neustarten? Alle aktiven Streams werden kurz unterbrochen."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn danger" type="submit">Neustarten</button></form>
+    </div>
+  {% else %}
+    <div class="warning-box">{{ container.error if container else "Unbekannter Fehler." }}</div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Snapshot-Dienstkonto</h2>
+  <p class="muted">Fuer die automatische Vorschaubild-Erzeugung wird ein interner, leserechtebeschraenkter MediaMTX-Zugang benoetigt.</p>
+  {% if snapshot_cred_exists %}
+    <p>Status: <strong>eingerichtet</strong></p>
+  {% else %}
+    <p>Status: <strong>noch nicht eingerichtet</strong> - Vorschaubilder koennen erst nach der Einrichtung erzeugt werden.</p>
+  {% endif %}
+  <form method="post" action="/server/snapshot-account/setup">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn secondary" type="submit" {{ "disabled" if not api_ok }}>{{ "Erneut synchronisieren" if snapshot_cred_exists else "Jetzt einrichten" }}</button>
+  </form>
+</div>
+{% endblock %}

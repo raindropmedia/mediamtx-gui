@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>{{ meta.display_name if meta and meta.display_name else name }}</h1>
+{% if meta and meta.display_name %}<p class="muted">Pfad: <span class="mono">{{ name }}</span></p>{% endif %}
+{% if meta and meta.description %}<p>{{ meta.description }}</p>{% endif %}
+
+{% if is_adhoc %}
+  <div class="card" style="border-left:4px solid var(--warn, #b8860b);">
+    <p style="margin:0;">Dieser Pfad hat <strong>keine eigene Konfiguration</strong> in MediaMTX - er ist gerade
+    aktiv, weil jemand direkt (nicht ueber diese GUI) darauf zugreift und dabei auf eine Catch-all-Regel
+    (z.B. "all_others") in der <span class="mono">mediamtx.yml</span> trifft. Solange das so bleibt, gelten
+    dafuer nur die Standard-Einstellungen dieser Catch-all-Regel - individuelle Einstellungen (Aufnahme,
+    max. Leserzahl, Sende-/Leserechte, ...) sind erst nach dem Anlegen einer eigenen Konfiguration moeglich.</p>
+  </div>
+{% endif %}
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+  <a class="btn secondary" href="/streams/{{ name }}/snapshot.jpg" target="_blank">Vorschaubild oeffnen</a>
+  <a class="btn secondary" href="/streams/{{ name }}/recordings">Aufnahmen</a>
+  {% if user.role == "admin" %}
+    {% if is_adhoc %}
+      <a class="btn" href="/streams/new?name={{ name }}">Eigene Konfiguration anlegen</a>
+    {% else %}
+      <a class="btn secondary" href="/streams/{{ name }}/edit">Bearbeiten</a>
+      <form class="inline" method="post" action="/streams/{{ name }}/delete" data-confirm="Stream '{{ name }}' wirklich loeschen? Dies entfernt die Konfiguration aus MediaMTX.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn danger" type="submit">Loeschen</button>
+      </form>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Status</h2>
+  {% if runtime %}
+    <table>
+      <tr><th>Status</th><td>{{ "Online" if runtime.online is defined and runtime.online else ("Online" if runtime.get("ready") else "Offline") }}</td></tr>
+      <tr><th>Quelltyp</th><td>{{ (runtime.source or {}).get("type", "-") if runtime.source else "-" }}</td></tr>
+      <tr><th>Leser aktuell</th><td>{{ (runtime.readers or []) | length }}</td></tr>
+      <tr><th>Eingehende Bytes</th><td>{{ runtime.get("inboundBytes", runtime.get("bytesReceived", "-")) }}</td></tr>
+      <tr><th>Ausgehende Bytes</th><td>{{ runtime.get("outboundBytes", runtime.get("bytesSent", "-")) }}</td></tr>
+    </table>
+  {% else %}
+    <p class="muted">Kein Laufzeitstatus verfuegbar (Stream evtl. noch nie aktiv gewesen).</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">Verbindungsdaten fuer Encoder / Player</h2>
+  <p class="hint muted">Diese URLs koennen direkt in OBS, VLC, ffmpeg oder Hardware-Encoder/Decoder eingetragen werden.
+  {% if scoped_credentials %}Es wird beispielhaft der Zugang "{{ scoped_credentials[0].username }}" eingetragen.{% else %}Es sind aktuell keine Zugangsdaten fuer diesen Pfad hinterlegt - siehe <a href="/credentials">Zugangsdaten</a>.{% endif %}</p>
+  {% for label, url in links.items() %}
+    <div class="link-row">
+      <div class="label">{{ label }}</div>
+      <div class="url mono">{{ url }}</div>
+      <button class="btn small secondary copy-btn" data-copy="{{ url }}">Kopieren</button>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0;">{{ "Eigene MediaMTX-Konfiguration" if not is_adhoc else "Eigene MediaMTX-Konfiguration (keine vorhanden)" }}</h2>
+  {% if is_adhoc %}
+    <p class="muted">Kein eigener Konfigurationseintrag - dieser Pfad laeuft ueber eine Catch-all-Regel.</p>
+  {% else %}
+    <pre class="mono" style="white-space:pre-wrap;overflow-x:auto;">{{ conf_pretty }}</pre>
+  {% endif %}
+</div>
+{% endblock %}

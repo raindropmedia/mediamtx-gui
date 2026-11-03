@@ -1,0 +1,19 @@
+<div class="topnav">
+  <div class="topnav-inner">
+    <a class="brand" href="/">MediaMTX GUI</a>
+    <nav>
+      <a href="/">Dashboard</a>
+      {% if user.role == "admin" %}
+        <a href="/streams/new">Neuer Stream</a>
+        <a href="/credentials">Zugangsdaten</a>
+        <a href="/users">Benutzer</a>
+        <a href="/server">Server</a>
+        <a href="/audit-log">Verlauf</a>
+      {% endif %}
+    </nav>
+    <span class="spacer"></span>
+    <span class="user-chip">{{ user.username }} &middot; <span class="pill {{ user.role }}">{{ "Admin" if user.role == "admin" else "Benutzer" }}</span></span>
+    <button id="theme-toggle" class="icon-btn" title="Hell/Dunkel umschalten">&#9788;</button>
+    <a class="icon-btn" href="/logout" title="Abmelden" style="display:flex;align-items:center;justify-content:center;">&#8594;</a>
+  </div>
+</div>

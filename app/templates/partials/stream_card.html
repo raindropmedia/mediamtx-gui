@@ -1,0 +1,18 @@
+<a class="stream-card" href="/streams/{{ s.name }}" style="text-decoration:none;color:inherit;">
+  <div class="thumb">
+    {% if s.has_snapshot %}
+      <img data-snapshot-refresh data-src="/streams/{{ s.name }}/snapshot.jpg" src="/streams/{{ s.name }}/snapshot.jpg" alt="Vorschau von {{ s.name }}">
+    {% else %}
+      <span class="placeholder" {% if s.snapshot_error %}title="{{ s.snapshot_error }}"{% endif %}>{{ "Kein Bild verfuegbar" if s.online else "Stream offline" }}</span>
+    {% endif %}
+    <span class="badge {{ 'online' if s.online else 'offline' }}">{{ "Online" if s.online else "Offline" }}</span>
+  </div>
+  <div class="body">
+    <div class="name">{{ s.display_name or s.name }}</div>
+    {% if s.display_name %}<div class="meta">{{ s.name }}</div>{% endif %}
+    <div class="meta">Quelle: {{ s.source_type }} &middot; Leser: {{ s.reader_count }}</div>
+    {% if s.tags %}
+      <div class="tags">{% for t in s.tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+    {% endif %}
+  </div>
+</a>

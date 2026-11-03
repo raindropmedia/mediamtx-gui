@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ "Neuer Stream" if is_new else "Stream bearbeiten" }} - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>{{ "Neuer Stream" if is_new else "Stream bearbeiten: " + name }}</h1>
+
+<form method="post" action="{{ '/streams/new' if is_new else '/streams/' + name + '/edit' }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="card">
+    <h3>Allgemein</h3>
+    {% if is_new %}
+      <div class="field">
+        <label for="name">Stream-Name (Pfad)</label>
+        <input type="text" id="name" name="name" value="{{ name }}" required pattern="[A-Za-z0-9][A-Za-z0-9_\-/]{0,254}" placeholder="z.B. kamera1 oder cams/eingang">
+        <div class="hint">Nur Buchstaben, Ziffern, '-', '_' und '/'. Nicht mehr aenderbar nach dem Anlegen.</div>
+      </div>
+    {% endif %}
+    <div class="form-row">
+      <div class="field">
+        <label for="display_name">Anzeigename</label>
+        <input type="text" id="display_name" name="display_name" value="{{ defaults.display_name or '' }}">
+      </div>
+      <div class="field">
+        <label for="tags">Tags (kommagetrennt)</label>
+        <input type="text" id="tags" name="tags" value="{{ defaults.tags or '' }}" placeholder="aussen, eingang">
+      </div>
+    </div>
+    <div class="field">
+      <label for="description">Beschreibung</label>
+      <textarea id="description" name="description" rows="2">{{ defaults.description or '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Quelle</h3>
+    <div class="field">
+      <label for="source_type">Quelltyp</label>
+      <select id="source_type" name="source_type">
+        <option value="publisher" {{ "selected" if defaults.source_type == "publisher" }}>Publisher (Encoder/Kamera sendet aktiv an den Server)</option>
+        <option value="pull" {{ "selected" if defaults.source_type == "pull" }}>Pull von externer Quell-URL (RTSP/RTMP/HLS/SRT/WHEP)</option>
+        <option value="redirect" {{ "selected" if defaults.source_type == "redirect" }}>Weiterleitung zu einem anderen Pfad</option>
+        <option value="rpiCamera" {{ "selected" if defaults.source_type == "rpiCamera" }}>Raspberry Pi Kamera</option>
+      </select>
+    </div>
+    <div class="field" data-source-fields="pull">
+      <label for="source_url">Quell-URL</label>
+      <input type="text" id="source_url" name="source_url" value="{{ defaults.source_url or '' }}" placeholder="rtsp://kamera-ip:554/stream1">
+      <div class="hint">Unterstuetzt u.a. rtsp(s)://, rtmp(s)://, http(s)://...m3u8, srt://, whep(s)://, udp+mpegts://</div>
+    </div>
+    <div class="field" data-source-fields="pull">
+      <label class="checkbox-row"><input type="checkbox" name="source_on_demand" {{ "checked" if defaults.source_on_demand }}> Nur bei Bedarf verbinden (source-on-demand)</label>
+    </div>
+    <div class="field" data-source-fields="redirect">
+      <label for="redirect_target">Ziel-Pfad</label>
+      <input type="text" id="redirect_target" name="redirect_target" value="{{ defaults.redirect_target or '' }}" placeholder="/anderer-pfad">
+    </div>
+    <div class="field">
+      <label for="max_readers">Maximale Anzahl gleichzeitiger Leser (0 = unbegrenzt)</label>
+      <input type="number" id="max_readers" name="max_readers" value="{{ defaults.max_readers or '' }}" min="0">
+    </div>
+    <div class="field">
+      <label class="checkbox-row"><input type="checkbox" name="always_available" {{ "checked" if defaults.always_available }}> Immer verfuegbar (zeigt Ersatzbild/-clip, wenn Quelle offline ist)</label>
+      <div class="hint">Nutzt standardmaessig das eingebaute "STREAM IS OFFLINE"-Ersatzbild (H264). Eigene Ersatzdatei oder andere Codecs: ueber "Erweiterte Parameter (JSON)" unten mit <code>alwaysAvailableFile</code> bzw. einer eigenen <code>alwaysAvailableTracks</code>-Liste ueberschreiben.</div>
+    </div>
+    <div class="field">
+      <label class="checkbox-row"><input type="checkbox" name="override_publisher" {{ "checked" if defaults.override_publisher is not defined or defaults.override_publisher }}> Neuer Publisher darf aktuellen ersetzen (overridePublisher)</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Aufnahme</h3>
+    <div class="field">
+      <label class="checkbox-row"><input type="checkbox" id="record" name="record" {{ "checked" if defaults.record }}> Aufnahme aktivieren</label>
+    </div>
+    <div class="form-row" data-record-fields>
+      <div class="field">
+        <label for="record_format">Format</label>
+        <select id="record_format" name="record_format">
+          <option value="fmp4" {{ "selected" if defaults.record_format == "fmp4" }}>fMP4 (empfohlen)</option>
+          <option value="mpegts" {{ "selected" if defaults.record_format == "mpegts" }}>MPEG-TS</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="record_segment_duration">Segmentdauer</label>
+        <input type="text" id="record_segment_duration" name="record_segment_duration" value="{{ defaults.record_segment_duration or '' }}" placeholder="1h">
+      </div>
+    </div>
+    <div class="field" data-record-fields>
+      <label for="record_delete_after">Aufnahmen loeschen nach</label>
+      <input type="text" id="record_delete_after" name="record_delete_after" value="{{ defaults.record_delete_after or '' }}" placeholder="7d (0s = nie loeschen)">
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Erweiterte Parameter (JSON)</h3>
+    <p class="hint muted">
+      Hier koennen beliebige weitere MediaMTX-Pfadparameter gesetzt werden (z.B. runOnReady-Hooks, SRT-Passphrasen,
+      WHEP-Einstellungen, Raspberry-Pi-Kamera-Details). Die Werte werden mit den Feldern oben zusammengefuehrt und
+      koennen diese ueberschreiben. Siehe die MediaMTX-Dokumentation (PathConf) fuer alle verfuegbaren Felder.
+    </p>
+    <div class="warning-box">Vorsicht bei runOn*-Hooks: Diese Befehle werden mit den Rechten des MediaMTX-Containers ausgefuehrt.</div>
+    <div class="field">
+      <textarea name="raw_json_overrides" rows="8" placeholder="{}">{{ raw_json }}</textarea>
+    </div>
+  </div>
+
+  <button class="btn" type="submit">{{ "Stream anlegen" if is_new else "Speichern" }}</button>
+  <a class="btn secondary" href="{{ '/' if is_new else '/streams/' + name }}">Abbrechen</a>
+</form>
+{% endblock %}

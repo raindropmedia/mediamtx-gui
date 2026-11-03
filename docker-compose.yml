@@ -1,0 +1,70 @@
+# Beispiel-Compose-Datei fuer die MediaMTX-GUI.
+#
+# Falls MediaMTX bereits in einem eigenen docker-compose.yml auf diesem
+# Server laeuft: am einfachsten den "mediamtx-gui"-Service (und optional
+# "caddy") unten in DIESELBE Compose-Datei wie den mediamtx-Service
+# uebernehmen, dann teilen sie sich automatisch ein Netzwerk und du kannst
+# den Namen des mediamtx-Service (z.B. "mediamtx") direkt als Hostname
+# verwenden. Alternativ: unten stehendes externes Netzwerk verwenden (siehe
+# Kommentare) und "docker network connect" auf den laufenden
+# mediamtx-Container anwenden.
+
+services:
+  mediamtx-gui:
+    build: .
+    # Alternativ, sobald ein fertiges Image existiert:
+    # image: ghcr.io/DEIN-NAMESPACE/mediamtx-gui:latest
+    container_name: mediamtx-gui
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - mediamtx-gui-data:/data
+      # Der Docker-Socket (/var/run/docker.sock) wird bewusst NICHT
+      # gemountet. Zugriff darauf ist gleichbedeutend mit Root-Rechten auf
+      # dem Host (auch mit ":ro"), daher ist die Container-Steuerung
+      # (Start/Stopp/Neustart von MediaMTX) ueber die GUI gesperrt.
+      # MediaMTX bei Bedarf direkt auf dem Server neu starten:
+      #   docker restart mediamtx
+    networks:
+      - mediamtx-net
+
+  # --- Zur Referenz: so saehe der bereits laufende MediaMTX-Service aus.
+  # Falls er in einer ANDEREN Compose-Datei liegt, NICHT hier neu
+  # definieren, sondern nur "networks: [mediamtx-net]" als externes
+  # Netzwerk in dessen bestehende Compose-Datei ergaenzen (siehe unten).
+  #
+  # mediamtx:
+  #   image: bluenviron/mediamtx:1-ffmpeg
+  #   container_name: mediamtx
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./mediamtx.yml:/mediamtx.yml
+  #   ports:
+  #     - "8554:8554"
+  #     - "1935:1935"
+  #     - "8888:8888"
+  #     - "8889:8889"
+  #     - "8189:8189/udp"
+  #     - "8890:8890/udp"
+  #     - "9997:9997"   # Control-API - kann auch NUR intern (ohne "ports:")
+  #                       erreichbar bleiben, wenn beide Container im
+  #                       selben Docker-Netzwerk laufen.
+  #   networks:
+  #     - mediamtx-net
+
+networks:
+  mediamtx-net:
+    # Wenn MediaMTX in einer separaten Compose-Datei laeuft: dort das von
+    # dessen Compose automatisch angelegte Netzwerk mit
+    # "docker network ls" ermitteln (z.B. "mediamtx_default"), hier
+    # eintragen und external:true setzen:
+    #
+    # external: true
+    # name: mediamtx_default
+    driver: bridge
+
+volumes:
+  mediamtx-gui-data:

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>Streams</h1>
+
+{% if error %}
+  <div class="warning-box">Verbindung zur MediaMTX-API fehlgeschlagen: {{ error }}</div>
+{% endif %}
+
+<div class="stat-row">
+  <div class="stat-tile"><div class="value">{{ stream_count }}</div><div class="label">Streams sichtbar</div></div>
+  <div class="stat-tile"><div class="value">{{ online_count }}</div><div class="label">davon online</div></div>
+</div>
+
+{% if streams %}
+  <div class="grid">
+    {% for s in streams %}
+      {% include "partials/stream_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p>Keine Streams gefunden{{ " oder du hast auf keinen Zugriff." if not error else "." }}</p>
+    {% if user.role == "admin" %}
+      <a class="btn" href="/streams/new">Ersten Stream anlegen</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

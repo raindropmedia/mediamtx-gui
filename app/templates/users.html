@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Benutzer - MediaMTX GUI{% endblock %}
+{% block content %}
+<h1>GUI-Benutzer</h1>
+<p class="muted">Diese Konten regeln den Zugriff auf diese Weboberflaeche (Login, Rollen Admin/Benutzer). Fuer
+  Sende-/Leserechte auf MediaMTX-Streams siehe <a href="/credentials">Zugangsdaten</a>.</p>
+
+<a class="btn" href="/users/new">Neuen Benutzer anlegen</a>
+
+<table style="margin-top:16px;">
+  <tr><th>Benutzername</th><th>Rolle</th><th>Sichtbare Streams</th><th>Status</th><th>Letzter Login</th><th></th></tr>
+  {% for u in users %}
+    <tr>
+      <td>{{ u.username }}</td>
+      <td><span class="pill {{ u.role }}">{{ "Admin" if u.role == "admin" else "Benutzer" }}</span></td>
+      <td>{{ u.allowed_paths if u.allowed_paths else "alle" }}</td>
+      <td>{{ "Aktiv" if u.active else "Deaktiviert" }}</td>
+      <td>{{ u.last_login_at.strftime("%d.%m.%Y %H:%M") if u.last_login_at else "-" }}</td>
+      <td style="white-space:nowrap;">
+        <a class="btn small secondary" href="/users/{{ u.id }}/edit">Bearbeiten</a>
+        {% if u.id != user.id %}
+          <form class="inline" method="post" action="/users/{{ u.id }}/delete" data-confirm="Benutzer '{{ u.username }}' wirklich loeschen?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn small danger" type="submit">Loeschen</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %}
