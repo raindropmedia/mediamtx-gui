@@ -66,25 +66,67 @@
       </select></div>
   </div>
 
-  <h2>Videoprofil</h2>
-  <p class="muted" style="margin-top:0;">Leer lassen = Standardwert des Backends (in Klammern).</p>
+  <h2>Videoprofil und Strecke</h2>
+  <p class="muted" style="margin-top:0;">„Standard“ = Vorgabe aus der Backend-Konfiguration (in Klammern).
+    Änderungen gelten erst mit einem <strong>neuen QR-Code</strong>.</p>
+  {% set cur_fmt = (prof.width|string + "x" + prof.height|string) if prof.width and prof.height else "" %}
   <div class="grid sl-grid">
-    {% for key, label in profile_fields %}
-      <div class="field">
-        <label for="profile_{{ key }}">{{ label }}</label>
-        <input type="number" id="profile_{{ key }}" name="profile_{{ key }}" value="{{ prof.get(key, '') }}"
-               placeholder="{{ defaults.get(key, '') }}">
-      </div>
-    {% endfor %}
     <div class="field">
-      <label for="profile_codec">Codec</label>
-      <select id="profile_codec" name="profile_codec">
-        <option value="">Standard ({{ defaults.get("codec", "h264") }})</option>
-        <option value="h264" {{ "selected" if prof.get("codec") == "h264" }}>H.264</option>
-        <option value="hevc" {{ "selected" if prof.get("codec") == "hevc" }}>HEVC</option>
+      <label for="profile_format">Format</label>
+      <select id="profile_format" name="profile_format">
+        <option value="">Standard ({{ defaults.get("width", 1920) }}×{{ defaults.get("height", 1080) }})</option>
+        {% for w, h in formats %}
+          <option value="{{ w }}x{{ h }}" {{ "selected" if cur_fmt == w|string + "x" + h|string }}>{{ format_names.get(h, h|string + "p") }} – {{ w }}×{{ h }}</option>
+        {% endfor %}
+        {% if cur_fmt and cur_fmt not in formats|map("join", "x")|list %}
+          <option value="{{ cur_fmt }}" selected>{{ prof.width }}×{{ prof.height }} (individuell)</option>
+        {% endif %}
       </select>
     </div>
+    <div class="field">
+      <label for="profile_fps">Bildrate</label>
+      <select id="profile_fps" name="profile_fps">
+        <option value="">Standard ({{ defaults.get("fps", 25) }} fps)</option>
+        {% for f in fps_values %}
+          <option value="{{ f }}" {{ "selected" if prof.get("fps") == f }}>{{ f }} fps</option>
+        {% endfor %}
+      </select>
+      <div class="hint">50/60 fps nur mit Kameras/Formaten, die das unterstützen; sonst nutzt die App die nächstmögliche.</div>
+    </div>
+    <div class="field">
+      <label for="profile_videoBitrateKbps">Video-Bitrate (kbit/s)</label>
+      <input type="number" id="profile_videoBitrateKbps" name="profile_videoBitrateKbps" min="100" max="50000" step="100"
+             value="{{ prof.get('videoBitrateKbps', '') }}" placeholder="Standard ({{ defaults.get('videoBitrateKbps', 4000) }})">
+      <div class="hint">Richtwerte H.264 bei 25/30 fps:
+        {% for h, hint in bitrate_hints.items() %}{{ h }}p {{ hint }}{{ "; " if not loop.last }}{% endfor %}. Bei 50/60 fps etwa ×1,5.</div>
+    </div>
+    <div class="field">
+      <label for="profile_audioBitrateKbps">Audio-Bitrate (AAC)</label>
+      <select id="profile_audioBitrateKbps" name="profile_audioBitrateKbps">
+        <option value="">Standard ({{ defaults.get("audioBitrateKbps", 192) }} kbit/s)</option>
+        {% for a in audio_bitrates %}
+          <option value="{{ a }}" {{ "selected" if prof.get("audioBitrateKbps") == a }}>{{ a }} kbit/s</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="profile_uplinkLatencyMs">SRT-Latenz Uplink (ms)</label>
+      <input type="number" id="profile_uplinkLatencyMs" name="profile_uplinkLatencyMs" min="20" max="8000" step="10"
+             list="latency-presets" value="{{ prof.get('uplinkLatencyMs', '') }}" placeholder="Standard ({{ defaults.get('uplinkLatencyMs', 800) }})">
+    </div>
+    <div class="field">
+      <label for="profile_returnLatencyMs">SRT-Latenz Return (ms)</label>
+      <input type="number" id="profile_returnLatencyMs" name="profile_returnLatencyMs" min="20" max="8000" step="10"
+             list="latency-presets" value="{{ prof.get('returnLatencyMs', '') }}" placeholder="Standard ({{ defaults.get('returnLatencyMs', 800) }})">
+    </div>
   </div>
+  <datalist id="latency-presets">
+    {% for ms, label in latency_presets %}<option value="{{ ms }}" label="{{ label }}">{% endfor %}
+  </datalist>
+  <p class="hint muted">Latenz: etwa das 3- bis 4-fache der Laufzeit (RTT) der Strecke. Richtwerte:
+    {% for ms, label in latency_presets %}{{ label }}{{ "; " if not loop.last }}{% endfor %}.
+    Höhere Latenz = mehr Zeit für Wiederholungen bei Paketverlust, aber längere Verzögerung.
+    Die tatsächliche Bitrate, RTT und den Verlust zeigt die Debug-Ansicht der App.</p>
 
   <button class="btn" type="submit">{{ "Reporter anlegen" if is_new else "Speichern" }}</button>
   <a class="btn secondary" href="/studiolink">Abbrechen</a>

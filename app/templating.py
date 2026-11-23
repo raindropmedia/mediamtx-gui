@@ -41,4 +41,4 @@ def render(request: Request, template_name: str, context: dict | None = None, st
     ctx["csrf_token"] = get_or_create_csrf_token(request)
     ctx.setdefault("user", None)
     ctx["studiolink_enabled"] = get_settings().studiolink_enabled
-    return templates.TemplateResponse(template_name, ctx, status_code=status_code)
+    return templates.TemplateResponse(request, template_name, ctx, status_code=status_code)

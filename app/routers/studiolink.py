@@ -29,15 +29,14 @@ router = APIRouter()
 
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 DEVICE_PATH_RE = re.compile(r"^[A-Za-z0-9_\-]+(/[A-Za-z0-9_\-]+)*$")
-PROFILE_FIELDS = [
-    ("width", "Breite (px)"),
-    ("height", "Hoehe (px)"),
-    ("fps", "Bildrate (fps)"),
-    ("videoBitrateKbps", "Video-Bitrate (kbit/s)"),
-    ("audioBitrateKbps", "Audio-Bitrate (kbit/s)"),
-    ("uplinkLatencyMs", "SRT-Latenz Uplink (ms)"),
-    ("returnLatencyMs", "SRT-Latenz Return (ms)"),
-]
+FPS_VALUES = [25, 30, 50, 60]
+FORMATS = [(960, 540), (1280, 720), (1920, 1080), (2560, 1440), (3840, 2160)]
+AUDIO_BITRATES = [96, 128, 160, 192, 256, 320]
+# Richtwerte fuer die Video-Bitrate (H.264) je Format bei 25/30 fps; bei 50/60 fps etwa x1,5.
+BITRATE_HINTS = {540: "1500-2500", 720: "2500-4000", 1080: "4000-8000", 1440: "8000-14000", 2160: "15000-30000"}
+LATENCY_PRESETS = [(200, "200 ms - Studio-LAN"), (500, "500 ms - gutes WLAN/Glasfaser"), (800, "800 ms - Mobilfunk (Standard)"),
+                   (1200, "1200 ms - schwacher Mobilfunk"), (2000, "2000 ms - sehr instabil")]
+FORMAT_NAMES = {540: "540p (qHD)", 720: "720p (HD)", 1080: "1080p (Full HD)", 1440: "1440p (QHD)", 2160: "2160p (4K UHD)"}
 
 
 def _back(msg: str, request: Request, level: str = "error", to: str = "/studiolink") -> RedirectResponse:
@@ -82,8 +81,13 @@ def _form_to_reporter(form, *, is_new: bool) -> dict:
     else:
         data["tsl"] = None
 
-    profile = {key: (form.get(f"profile_{key}") or "").strip() for key, _ in PROFILE_FIELDS}
-    profile["codec"] = form.get("profile_codec") or ""
+    profile: dict = {}
+    fmt = (form.get("profile_format") or "").strip()
+    if fmt:
+        w, _, h = fmt.partition("x")
+        profile["width"], profile["height"] = w, h
+    for key in ("fps", "videoBitrateKbps", "audioBitrateKbps", "uplinkLatencyMs", "returnLatencyMs"):
+        profile[key] = (form.get(f"profile_{key}") or "").strip()
     data["profile"] = profile
 
     passphrase = (form.get("passphrase") or "").strip()
@@ -181,6 +185,8 @@ async def overview(
         "Return (studio/<id>/ret)": await _path_coverage(client, "studio/test/ret"),
     }
     now = time.time()
+    for r in reporters or []:
+        r["profileSummary"] = profile_summary(r.get("profile"), (info or {}).get("defaults", {}))
     device_summary = {
         "total": len(devices or []),
         "expiring": sum(1 for d in devices or [] if now < d["exp"] < now + 30 * 86400),
@@ -208,12 +214,32 @@ async def overview(
 # Reporter anlegen / bearbeiten / loeschen / widerrufen
 # ---------------------------------------------------------------------------
 
+def profile_summary(profile: dict | None, defaults: dict) -> str:
+    """Kurzform wie '1080p25 · 4000+192 kbit/s · 800/800 ms' (Standardwerte eingerechnet)."""
+    p = {**(defaults or {}), **(profile or {})}
+    try:
+        return (f"{p.get('height', '?')}p{p.get('fps', '?')} · {p.get('videoBitrateKbps', '?')}+{p.get('audioBitrateKbps', '?')} kbit/s"
+                f" · {p.get('uplinkLatencyMs', '?')}/{p.get('returnLatencyMs', '?')} ms")
+    except Exception:  # noqa: BLE001
+        return "-"
+
+
 async def _form_ctx(sl: StudioLinkClient) -> dict:
     try:
         info = await sl.info()
     except StudioLinkError:
         info = {}
-    return {"defaults": (info or {}).get("defaults", {}), "profile_fields": PROFILE_FIELDS}
+    options = (info or {}).get("options") or {}
+    formats = [(f["width"], f["height"]) for f in options.get("formats", [])] or FORMATS
+    return {
+        "defaults": (info or {}).get("defaults", {}),
+        "fps_values": options.get("fps") or FPS_VALUES,
+        "formats": formats,
+        "format_names": FORMAT_NAMES,
+        "audio_bitrates": AUDIO_BITRATES,
+        "bitrate_hints": BITRATE_HINTS,
+        "latency_presets": LATENCY_PRESETS,
+    }
 
 
 @router.get("/studiolink/new")

@@ -24,7 +24,7 @@ MTX_AUTH_SECRET=...                            # openssl rand -hex 24</pre>
 
 <h2>Reporter</h2>
 <table>
-  <tr><th>Reporter</th><th>Tally</th><th>Uplink</th><th>App</th><th>TSL</th><th></th></tr>
+  <tr><th>Reporter</th><th>Profil</th><th>Tally</th><th>Uplink</th><th>App</th><th>TSL</th><th></th></tr>
   {% for r in reporters %}
     <tr>
       <td>
@@ -32,6 +32,7 @@ MTX_AUTH_SECRET=...                            # openssl rand -hex 24</pre>
         <span class="mono muted">{{ r.id }}</span>
         {% if r.hasPassphrase %}<span class="pill user" title="SRT-Verschluesselung aktiv">AES</span>{% endif %}
       </td>
+      <td class="mono" style="font-size:12px;" title="Format+Bildrate · Video+Audio-Bitrate · Latenz Uplink/Return">{{ r.profileSummary }}</td>
       <td>
         {% set t = (r.tally or {}).get("state", "unknown") %}
         <span class="sl-dot sl-{{ t }}"></span>
@@ -67,7 +68,7 @@ MTX_AUTH_SECRET=...                            # openssl rand -hex 24</pre>
       </td>
     </tr>
   {% else %}
-    <tr><td colspan="6" class="muted">Noch keine Reporter angelegt.</td></tr>
+    <tr><td colspan="7" class="muted">Noch keine Reporter angelegt.</td></tr>
   {% endfor %}
 </table>
 
